@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --bg1: #ffd1dc;
+      --bg2: #c9e4ff;
+      --text: #444444;
+      --cell: rgba(255, 255, 255, 0.85);
+      --pill: #ffffff;
+      --pillText: #444444;
+      --accent: #b39ddb;
+      --win: #ffe082;
+      --x: #e57399;
+      --o: #5c9ee6;
+      --line: #444444;
+    }
+    body.dark {
+      --bg1: #1e1e2f;
+      --bg2: #2d2d44;
+      --text: #eeeeee;
+      --cell: rgba(255, 255, 255, 0.12);
+      --pill: #3a3a55;
+      --pillText: #eeeeee;
+      --accent: #7e57c2;
+      --win: #8a7a2a;
+      --x: #ff8fb1;
+      --o: #7ec8ff;
+      --line: #eeeeee;
+    }
+    body.green {
+      --bg1: #d4f5d4;
+      --bg2: #fff6c9;
+      --text: #335533;
+      --cell: rgba(255, 255, 255, 0.85);
+      --pill: #ffffff;
+      --pillText: #335533;
+      --accent: #66bb6a;
+      --win: #ffe082;
+      --x: #e57373;
+      --o: #4f83cc;
+      --line: #335533;
+    }
+
+    body {
+      margin: 0;
+      padding: 12px 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(135deg, var(--bg1), var(--bg2));
+    }
+    h1 {
+      margin: 8px 0;
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      max-width: 360px;
+    }
+    #score {
+      font-size: 16px;
+      margin: 8px 12px 4px 12px;
+      text-align: center;
+    }
+    #status {
+      font-size: 18px;
+      margin: 4px 0;
+      min-height: 22px;
+    }
+    .pill {
+      padding: 10px 14px;
+      margin: 4px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      background: var(--pill);
+      color: var(--pillText);
+    }
+    .pill.active {
+      background: var(--accent);
+      color: white;
+    }
+    input {
+      width: 125px;
+      padding: 9px 10px;
+      margin: 4px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      background: var(--pill);
+      color: var(--pillText);
+    }
+
+    #board {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, 90px);
+      gap: 8px;
+      margin: 12px;
+    }
+    #board button {
+      width: 90px;
+      height: 90px;
+      font-size: 40px;
+      font-weight: bold;
+      border: none;
+      border-radius: 14px;
+      background: var(--cell);
+    }
+    #board button.mx { color: var(--x); }
+    #board button.mo { color: var(--o); }
+    #board button.win { background: var(--win); }
+    #board button.pop { animation: pop 0.25s ease; }
+
+    @keyframes pop {
+      0% { transform: scale(0.3); }
+      70% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+
+    #strike {
+      position: absolute;
+      height: 7px;
+      width: 0;
+      border-radius: 4px;
+      background: var(--line);
+      transform-origin: 0 50%;
+      transition: width 0.4s ease;
+      pointer-events: none;
+      display: none;
+    }
+
+    .confetti {
+      position: fixed;
+      top: -20px;
+      width: 10px;
+      height: 14px;
+      z-index: 10;
+      pointer-events: none;
+      animation-name: fall;
+      animation-timing-function: linear;
+      animation-fill-mode: forwards;
+    }
+    @keyframes fall {
+      to { transform: translateY(110vh) rotate(720deg); }
+    }
+  </style>
+</head>
+<body>
+  <h1>Tic-Tac-Toe</h1>
+
+  <div class="row">
+    <span>Player 1 plays:</span>
+    <button id="symXBtn" class="pill active" onclick="setSymbol('X')">X</button>
+    <button id="symOBtn" class="pill" onclick="setSymbol('O')">O</button>
+  </div>
+
+  <div class="row" id="modes">
+    <button id="computerBtn" class="pill active" onclick="setMode(true)">Vs Computer</button>
+    <button id="friendBtn" class="pill" onclick="setMode(false)">Vs Friend</button>
+  </div>
+
+  <div class="row" id="levels">
+    <button id="easyBtn" class="pill" onclick="setDifficulty('easy')">Easy</button>
+    <button id="mediumBtn" class="pill active" onclick="setDifficulty('medium')">Medium</button>
+    <button id="hardBtn" class="pill" onclick="setDifficulty('hard')">Hard</button>
+  </div>
+
+  <div class="row">
+    <input id="name1Input" maxlength="10" placeholder="Player 1 name" oninput="changeNames()">
+    <input id="name2Input" maxlength="10" placeholder="Player 2 name" oninput="changeNames()">
+  </div>
+
+  <p id="score"></p>
+  <p id="status"></p>
+
+  <div id="board">
+    <button onclick="tap(0)"></button>
+    <button onclick="tap(1)"></button>
+    <button onclick="tap(2)"></button>
+    <button onclick="tap(3)"></button>
+    <button onclick="tap(4)"></button>
+    <button onclick="tap(5)"></button>
+    <button onclick="tap(6)"></button>
+    <button onclick="tap(7)"></button>
+    <button onclick="tap(8)"></button>
+    <div id="strike"></div>
+  </div>
+
+  <div class="row">
+    <button class="pill" onclick="resetGame()">New Game</button>
+    <button class="pill" onclick="undoMove()">Undo</button>
+    <button id="soundBtn" class="pill" onclick="toggleSound()">Sound: On</button>
+    <button id="themeBtn" class="pill" onclick="nextTheme()">Theme: Pastel</button>
+    <button class="pill" onclick="clearScore()">Reset Score</button>
+  </div>
+
+  <script>
+    var current = "X";
+    var starter = "X";
+    var gameOver = false;
+    var vsComputer = true;
+    var difficulty = "medium";
+    var soundOn = true;
+    var audioCtx = null;
+    var sym1 = "X";          // Player 1's letter
+    var sym2 = "O";          // Player 2 / computer's letter
+    var name1 = "";
+    var name2 = "";
+    var theme = "pastel";
+    var themes = ["pastel", "dark", "green"];
+    var score1 = 0;
+    var score2 = 0;
+    var scoreDraw = 0;
+    var moves = [];          // list of moves, used by Undo
+    var aiTimer = null;
+    var wins = [
+      [0,1,2], [3,4,5], [6,7,8],
+      [0,3,6], [1,4,7], [2,5,8],
+      [0,4,8], [2,4,6]
+    ];
+
+    function cells() {
+      return document.querySelectorAll("#board button");
+    }
+
+    // ---------- Save and load ----------
+
+    function saveData() {
+      try {
+        var data = {
+          score1: score1,
+          score2: score2,
+          scoreDraw: scoreDraw,
+          vsComputer: vsComputer,
+          difficulty: difficulty,
+          soundOn: soundOn,
+          sym1: sym1,
+          name1: name1,
+          name2: name2,
+          theme: theme
+        };
+        localStorage.setItem("tictactoe2", JSON.stringify(data));
+      } catch (e) {}
+    }
+
+    function loadData() {
+      try {
+        var saved = localStorage.getItem("tictactoe2");
+        if (!saved) return;
+        var data = JSON.parse(saved);
+        score1 = data.score1 || 0;
+        score2 = data.score2 || 0;
+        scoreDraw = data.scoreDraw || 0;
+        vsComputer = data.vsComputer !== false;
+        difficulty = data.difficulty || "medium";
+        soundOn = data.soundOn !== false;
+        sym1 = data.sym1 === "O" ? "O" : "X";
+        sym2 = sym1 === "X" ? "O" : "X";
+        name1 = data.name1 || "";
+        name2 = data.name2 || "";
+        theme = themes.indexOf(data.theme) !== -1 ? data.theme : "pastel";
+      } catch (e) {}
+    }
+
+    // Makes every button, input and the theme match the current settings
+    function refreshButtons() {
+      document.getElementById("computerBtn").className = vsComputer ? "pill active" : "pill";
+      document.getElementById("friendBtn").className = vsComputer ? "pill" : "pill active";
+      document.getElementById("levels").style.display = vsComputer ? "flex" : "none";
+      document.getElementById("name2Input").style.display = vsComputer ? "none" : "inline-block";
+
+      var ids = ["easy", "medium", "hard"];
+      for (var i = 0; i < ids.length; i++) {
+        document.getElementById(ids[i] + "Btn").className =
+          ids[i] === difficulty ? "pill active" : "pill";
+      }
+
+      document.getElementById("symXBtn").className = sym1 === "X" ? "pill active" : "pill";
+      document.getElementById("symOBtn").className = sym1 === "O" ? "pill active" : "pill";
+      document.getElementById("soundBtn").textContent = soundOn ? "Sound: On" : "Sound: Off";
+
+      document.body.className = theme === "pastel" ? "" : theme;
+      document.getElementById("themeBtn").textContent =
+        "Theme: " + theme.charAt(0).toUpperCase() + theme.slice(1);
+
+      document.getElementById("name1Input").value = name1;
+      document.getElementById("name2Input").value = name2;
+    }
+
+    // ---------- Names ----------
+
+    // Name of whoever is playing this letter
+    function nameOf(letter) {
+      if (letter === sym1) return name1 || "Player 1";
+      if (vsComputer) return "Computer";
+      return name2 || "Player 2";
+    }
+
+    function changeNames() {
+      name1 = document.getElementById("name1Input").value.trim();
+      name2 = document.getElementById("name2Input").value.trim();
+      updateScore();
+      if (!gameOver) showTurn();
+    }
+
+    // ---------- Themes ----------
+
+    function nextTheme() {
+      var next = (themes.indexOf(theme) + 1) % themes.length;
+      theme = themes[next];
+      refreshButtons();
+      saveData();
+    }
+
+    // ---------- Sound ----------
+
+    function beep(freq, duration) {
+      if (!soundOn) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.frequency.value = freq;
+        gain.gain.value = 0.1;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function winSound() {
+      beep(800, 0.15);
+      setTimeout(function () { beep(1000, 0.15); }, 150);
+      setTimeout(function () { beep(1200, 0.3); }, 300);
+    }
+
+    function loseSound() {
+      beep(300, 0.3);
+      setTimeout(function () { beep(200, 0.4); }, 250);
+    }
+
+    function toggleSound() {
+      soundOn = !soundOn;
+      refreshButtons();
+      saveData();
+    }
+
+    // ---------- Confetti ----------
+
+    function removeLater(piece) {
+      setTimeout(function () { piece.remove(); }, 4500);
+    }
+
+    function confetti() {
+      var colors = ["#ff8fb1", "#7ec8ff", "#ffe082", "#a5d6a7", "#b39ddb"];
+      for (var i = 0; i < 40; i++) {
+        var piece = document.createElement("div");
+        piece.className = "confetti";
+        piece.style.left = (Math.random() * 100) + "vw";
+        piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+        piece.style.animationDuration = (2 + Math.random() * 2) + "s";
+        piece.style.animationDelay = (Math.random() * 0.5) + "s";
+        document.body.appendChild(piece);
+        removeLater(piece);
+      }
+    }
+
+    // ---------- Strike line ----------
+
+    function drawStrike(line) {
+      var all = cells();
+      var first = all[line[0]];
+      var last = all[line[2]];
+
+      var x1 = first.offsetLeft + first.offsetWidth / 2;
+      var y1 = first.offsetTop + first.offsetHeight / 2;
+      var x2 = last.offsetLeft + last.offsetWidth / 2;
+      var y2 = last.offsetTop + last.offsetHeight / 2;
+
+      var dx = x2 - x1;
+      var dy = y2 - y1;
+      var length = Math.sqrt(dx * dx + dy * dy);
+      var angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+      var extra = 25;
+      var startX = x1 - (dx / length) * extra;
+      var startY = y1 - (dy / length) * extra;
+
+      var strike = document.getElementById("strike");
+      strike.style.display = "block";
+      strike.style.left = startX + "px";
+      strike.style.top = (startY - 3.5) + "px";
+      strike.style.transform = "rotate(" + angle + "deg)";
+      strike.style.width = "0px";
+
+      setTimeout(function () {
+        strike.style.width = (length + extra * 2) + "px";
+      }, 30);
+    }
+
+    function hideStrike() {
+      var strike = document.getElementById("strike");
+      strike.style.display = "none";
+      strike.style.width = "0px";
+    }
+
+    // ---------- Score and messages ----------
+
+    function updateScore() {
+      document.getElementById("score").textContent =
+        nameOf(sym1) + ": " + score1 + " | " +
+        nameOf(sym2) + ": " + score2 + " | Draws: " + scoreDraw;
+      saveData();
+    }
+
+    function showTurn() {
+      var text;
+      if (vsComputer && current === sym2) {
+        text = "Computer is thinking...";
+      } else {
+        text = nameOf(current) + "'s turn (" + current + ")";
+      }
+      document.getElementById("status").textContent = text;
+    }
+
+    // ---------- Board checks ----------
+
+    function getWinLine() {
+      var all = cells();
+      for (var i = 0; i < wins.length; i++) {
+        var a = wins[i][0];
+        var b = wins[i][1];
+        var c = wins[i][2];
+        if (all[a].textContent !== "" &&
+            all[a].textContent === all[b].textContent &&
+            all[a].textContent === all[c].textContent) {
+          return wins[i];
+        }
+      }
+      return null;
+    }
+
+    function isDraw() {
+      var all = cells();
+      for (var i = 0; i < all.length; i++) {
+        if (all[i].textContent === "") return false;
+      }
+      return true;
+    }
+
+    // ---------- Playing ----------
+
+    // Runs when someone taps square number i
+    function tap(i) {
+      if (vsComputer && current !== sym1) return;
+      play(i);
+    }
+
+    // Places the current letter on square i (used by players and the computer)
+    function play(i) {
+      var all = cells();
+      var cell = all[i];
+      if (gameOver || cell.textContent !== "") return;
+
+      cell.textContent = current;
+      cell.classList.add(current === "X" ? "mx" : "mo");
+      cell.classList.add("pop");
+      moves.push({ index: i, letter: current });
+      beep(current === "X" ? 600 : 400, 0.1);
+
+      var line = getWinLine();
+      if (line) {
+        gameOver = true;
+        for (var k = 0; k < line.length; k++) {
+          all[line[k]].classList.add("win");
+        }
+        drawStrike(line);
+
+        var computerWon = vsComputer && current === sym2;
+        if (current === sym1) {
+          score1++;
+        } else {
+          score2++;
+        }
+        document.getElementById("status").textContent =
+          nameOf(current) + " wins!" + (computerWon ? "" : " 🎉");
+        updateScore();
+
+        if (computerWon) {
+          setTimeout(loseSound, 150);
+        } else {
+          setTimeout(winSound, 150);
+          confetti();
+        }
+        return;
+      }
+
+      if (isDraw()) {
+        gameOver = true;
+        scoreDraw++;
+        updateScore();
+        document.getElementById("status").textContent = "It's a draw!";
+        setTimeout(function () { beep(250, 0.4); }, 150);
+        return;
+      }
+
+      current = current === "X" ? "O" : "X";
+      showTurn();
+      if (vsComputer && current === sym2) {
+        scheduleComputer();
+      }
+    }
+
+    // ---------- Undo ----------
+
+    function undoMove() {
+      if (gameOver || moves.length === 0) return;
+
+      if (vsComputer) {
+        if (current !== sym1) return;   // computer is thinking
+        var hasHuman = false;
+        for (var i = 0; i < moves.length; i++) {
+          if (moves[i].letter === sym1) hasHuman = true;
+        }
+        if (!hasHuman) return;
+      }
+
+      var all = cells();
+      var removed = 0;
+      while (moves.length > 0 && removed < 2) {
+        var m = moves.pop();
+        all[m.index].textContent = "";
+        all[m.index].className = "";
+        current = m.letter;
+        removed++;
+        // Vs Friend: take back 1 move. Vs Computer: take back the
+        // computer's move and your move too.
+        if (!vsComputer || m.letter === sym1) break;
+      }
+      beep(350, 0.08);
+      showTurn();
+    }
+
+    // ---------- Computer brain ----------
+
+    function scheduleComputer() {
+      clearTimeout(aiTimer);
+      aiTimer = setTimeout(computerMove, 500);
+    }
+
+    // Finds a square where the given letter would win next
+    function findWinningSquare(letter) {
+      var all = cells();
+      for (var i = 0; i < all.length; i++) {
+        if (all[i].textContent === "") {
+          all[i].textContent = letter;
+          var willWin = getWinLine() !== null;
+          all[i].textContent = "";
+          if (willWin) return i;
+        }
+      }
+      return -1;
+    }
+
+    function randomMove() {
+      var all = cells();
+      var free = [];
+      for (var i = 0; i < all.length; i++) {
+        if (all[i].textContent === "") free.push(i);
+      }
+      return free[Math.floor(Math.random() * free.length)];
+    }
+
+    // Copies the board into a simple list like ["X","","O",...]
+    function getBoard() {
+      var all = cells();
+      var b = [];
+      for (var i = 0; i < all.length; i++) {
+        b.push(all[i].textContent);
+      }
+      return b;
+    }
+
+    function winnerOf(b) {
+      for (var i = 0; i < wins.length; i++) {
+        var l = wins[i];
+        if (b[l[0]] !== "" && b[l[0]] === b[l[1]] && b[l[0]] === b[l[2]]) {
+          return b[l[0]];
+        }
+      }
+      return null;
+    }
+
+    // Tries every possible future game. Computer win = 1, your win = -1, draw = 0
+    function minimax(b, player) {
+      var w = winnerOf(b);
+      if (w === sym2) return 1;
+      if (w === sym1) return -1;
+
+      var free = [];
+      for (var i = 0; i < 9; i++) {
+        if (b[i] === "") free.push(i);
+      }
+      if (free.length === 0) return 0;
+
+      var best = player === sym2 ? -2 : 2;
+      for (var j = 0; j < free.length; j++) {
+        b[free[j]] = player;
+        var score = minimax(b, player === sym2 ? sym1 : sym2);
+        b[free[j]] = "";
+        if (player === sym2) {
+          best = Math.max(best, score);
+        } else {
+          best = Math.min(best, score);
+        }
+      }
+      return best;
+    }
+
+    function bestMove() {
+      var b = getBoard();
+      var bestScore = -2;
+      var bestSquares = [];
+      for (var i = 0; i < 9; i++) {
+        if (b[i] === "") {
+          b[i] = sym2;
+          var score = minimax(b, sym1);
+          b[i] = "";
+          if (score > bestScore) {
+            bestScore = score;
+            bestSquares = [i];
+          } else if (score === bestScore) {
+            bestSquares.push(i);
+          }
+        }
+      }
+      return bestSquares[Math.floor(Math.random() * bestSquares.length)];
+    }
+
+    function computerMove() {
+      if (gameOver || !vsComputer || current !== sym2) return;
+      var all = cells();
+      var move;
+
+      if (difficulty === "easy") {
+        move = randomMove();
+      } else if (difficulty === "hard") {
+        move = bestMove();
+      } else {
+        move = findWinningSquare(sym2);                   // win if possible
+        if (move === -1) move = findWinningSquare(sym1);  // block you
+        if (move === -1 && all[4].textContent === "") move = 4; // center
+        if (move === -1) move = randomMove();             // any free square
+      }
+      play(move);
+    }
+
+    // ---------- Game control ----------
+
+    // Clears the board and starts a fresh game
+    function begin() {
+      clearTimeout(aiTimer);
+      var all = cells();
+      for (var i = 0; i < all.length; i++) {
+        all[i].textContent = "";
+        all[i].className = "";
+      }
+      hideStrike();
+      moves = [];
+      gameOver = false;
+      current = starter;
+      updateScore();
+      showTurn();
+      if (vsComputer && current === sym2) {
+        scheduleComputer();
+      }
+    }
+
+    // New Game: keep score, switch who starts
+    function resetGame() {
+      starter = starter === "X" ? "O" : "X";
+      begin();
+    }
+
+    function resetScore() {
+      score1 = 0;
+      score2 = 0;
+      scoreDraw = 0;
+      starter = "X";
+    }
+
+    function clearScore() {
+      resetScore();
+      begin();
+    }
+
+    // Player 1 picks X or O (score stays, X always starts)
+    function setSymbol(letter) {
+      sym1 = letter;
+      sym2 = letter === "X" ? "O" : "X";
+      starter = "X";
+      refreshButtons();
+      begin();
+    }
+
+    function setMode(computerMode) {
+      vsComputer = computerMode;
+      refreshButtons();
+      resetScore();
+      begin();
+    }
+
+    function setDifficulty(level) {
+      difficulty = level;
+      refreshButtons();
+      resetScore();
+      begin();
+    }
+
+    // ---------- Start ----------
+    loadData();
+    refreshButtons();
+    begin();
+  </script>
+</body>
+</html>
